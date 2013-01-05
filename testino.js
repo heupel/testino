@@ -10,15 +10,12 @@ function buildTestResult() {
     return this.text + ((this.message != null && this.message != "") ? " - " + this.message : "");
   }
 
-  const INCONCLUSIVE = "Inconclusive";
   const PASSED = "Passed";
-  const FAILED = "Failed";
+  const FAILED = "AssertionError";
 
-  Testino.TestResult.prototype.isInconclusive = function() { return this.text === INCONCLUSIVE; }
   Testino.TestResult.prototype.isPassed = function() { return this.text === PASSED; }
   Testino.TestResult.prototype.isFailed = function() { return this.text === FAILED; }
 
-  Testino.inconclusive = function(message) { return new Testino.TestResult(INCONCLUSIVE, message); }
   Testino.passed = function(message) { return new Testino.TestResult(PASSED, message); }
   Testino.failed = function(message) { return new Testino.TestResult(FAILED, message); }
 }
@@ -27,7 +24,7 @@ function buildTestResult() {
 function buildTest() {
   Testino.Test = function(name, testMethod) {
     this.name = name;
-    this.result = Testino.inconclusive();
+    this.result = Testino.passed();
     this.testMethod = testMethod;
   }
 
@@ -41,7 +38,6 @@ function buildTest() {
 
   Testino.Test.prototype.isPassed = function() { return this.result.isPassed(); }
   Testino.Test.prototype.isFailed = function() { return this.result.isFailed(); }
-  Testino.Test.prototype.isInconclusive = function() { return this.result.isInconclusive(); }
 
 
   Testino.Test.prototype.run = function(testObject) {
@@ -67,17 +63,44 @@ function buildDefaultResultFormatters() {
     }
   }
 
-  Testino.testRunnerResultsFromatter = {
+  Testino.defaultResultsFormatter = {
     format: function(results, options) {
       var output = "TEST RESULTS FOR " + results.fixtureName +
-        "    Total: " + (results.passed.length + results.failed.length + results.inconclusive.length + results.other.length) +
+        "    Total: " + (results.passed.length + results.failed.length + results.other.length) +
         "\n    Passed: " + results.passed.length +
-        "    Failed: " + results.failed.length +
-        "    Inconclusive: " + results.inconclusive.length;
+        "    Failed: " + results.failed.length;
 
       if (results.other.length > 0) {
         output += "    Other (unknown): " + results.other.length;
       }
+
+      var detailedSectionOutput = function(sectionName, resultsSection) {
+        var detailedOutput = "";
+
+        var testOutput = function(test) {
+          return "\t" + test.name + " \t\t" + test.result.message;
+        }
+
+        var testSectionOutput = function(testSection) {
+          var sectionOutput = "";
+
+          testSection.forEach(function(test, _index, _array) {
+            sectionOutput += testOutput(test) + "\n";
+          });
+
+          return sectionOutput;
+        }
+
+
+        if (resultsSection.length > 0) {
+          detailedOutput += "\n\n  " + sectionName + " test details:\n" + testSectionOutput(resultsSection);
+        }
+
+        return detailedOutput;
+      }
+
+      output += detailedSectionOutput('FAILED', results.failed);
+      output += detailedSectionOutput('OTHER', results.other);
 
       return output;
     }
@@ -85,14 +108,14 @@ function buildDefaultResultFormatters() {
 }
 
 
-function buildTestFixtureRunner() {
+function buildTestFixtureRunners() {
   Testino.run = function(testObject, resultsFormatter) {
     if (typeof testObject != 'object') {
       throw new Error("testObject must be an object");
     }
 
-    if (resultsFormatter == null) {
-      resultsFormatter = Testino.objectResultsFormatter;
+    if (typeof resultsFormatter === 'undefined' || resultsFormatter === null) {
+      resultsFormatter = Testino.defaultResultsFormatter;
     }
 
     if (typeof resultsFormatter.format != 'function') {
@@ -122,8 +145,6 @@ function buildTestFixtureRunner() {
           group = results.passed;
         } else if (test.isFailed()) {
           group = results.failed;
-        } else if (test.isInconclusive()) {
-          group = results.inconclusive;
         }
 
         group.push(test);
@@ -133,19 +154,27 @@ function buildTestFixtureRunner() {
         fixtureName: testObject.name,
         passed: [],
         failed: [],
-        inconclusive: [],
         other: []  // Nothing should end up here, but leaving a spot just in case
       }
 
-      Object.keys(tests).forEach(function(testName, _index, _array) {
-        var test = tests[testName];
-        var testResult = test.run(testObject);
+      var runTest = function(test, testObject) {
+        var testResult = Testino.passed();
 
-        if (testResult != null) {
-          test.setResult(testResult);
+        try {
+          test.run(testObject);
+        } catch (err) {
+          testResult = new Testino.TestResult(err.name, err.toString());
         }
 
+        test.setResult(testResult);
+
         assignTestToResultGroup(test, testResults);
+      }
+
+
+      Object.keys(tests).forEach(function(testName, _index, _array) {
+        var test = tests[testName];
+        runTest(test, testObject);
       });
 
       return testResults;
@@ -156,6 +185,48 @@ function buildTestFixtureRunner() {
 
     return resultsFormatter.format(results);
   }
+
+
+  Testino.runFixtures = function(fixtureArray, resultFormatter) {
+    if (!(fixtureArray instanceof Array)) {
+      fixtureArray = [ fixtureArray ];
+    }
+
+    var results = [];
+    fixtureArray.forEach(function(fixture, _index, _array) {
+      results.push(Testino.run(fixture, resultFormatter));
+    });
+
+    // TODO: Special logic for the default formatter -- see if I can do something better here
+    if (typeof resultFormatter === 'undefined' || resultFormatter == null || resultFormatter === Testino.defaultResultsFormatter) {
+      defaultFixturesOutput = ""
+      results.forEach(function(result, _index, _array) {
+        defaultFixturesOutput += result + "\n\n"
+      });
+      return defaultFixturesOutput;
+    }
+
+    return results;
+  }
+
+
+  Testino.runFiles = function(globPattern, resultFormatter) {
+    var glob = require('glob');
+    var path = require('path');
+    const EMPTY_OPTIONS = {};
+    var files = glob.sync(globPattern, EMPTY_OPTIONS);
+
+    if (files === null || !files.length) {
+      return [];
+    }
+
+    var fixtures = [];
+    files.forEach(function(file, _index, _array) {
+      fixtures.push(require(path.resolve(file)));
+    });
+
+    return Testino.runFixtures(fixtures, resultFormatter);
+  }
 }
 
 
@@ -163,7 +234,7 @@ function buildTestFixtureRunner() {
 buildTestResult();
 buildTest();
 buildDefaultResultFormatters();
-buildTestFixtureRunner();
+buildTestFixtureRunners();
 
 
 Testino.createFixture = function(fixtureName) {

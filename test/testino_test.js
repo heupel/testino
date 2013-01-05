@@ -1,25 +1,24 @@
 var testino = require('../testino');
+var assert = require('assert');
 
 var testinoTester = testino.createFixture('testinoTester');
 
 testinoTester.tests = {
   thingsAreWiredUp: function() {
-    return this.Testino.passed('just making sure things are wired up');
+    assert.ok(true, 'just making sure things are wired up');
+  },
+
+  'we can use string names for methods too!': function() {
+    assert.ok(true, 'see, this is easy!');
   },
 
   thisTestShouldFail: function() {
-    return this.Testino.failed('this test failed on purpsose');
+    var actual = expected = null;
+    assert.fail(actual, expected, 'this test failed on purpsose');
   },
 
-  thisTestIsInconclusive: function() {
-    return this.Testino.inconclusive('this test is inconclusive on purpose');
-  },
-
-  testsAreInconclusiveByDefault: function() { },
-
-  testsCanHaveOtherResultTypesTooButNotExpected: function() {
-    return new this.Testino.TestResult('Craziness Ensues',
-                                         'this test is not normal and should be in other');
+  'tests with unexpected errors end up in the "Other" category': function () {
+    throw new Error("This result should end up in the Other category");
   }
 }
 
@@ -27,16 +26,14 @@ testinoTester.tests = {
 module.exports = testinoTester;
 
 
-function main(args) {
-  var results = testinoTester.run();
-
-  console.log(results);
-  console.log(testinoTester.Testino.jsonStringResultsFormatter.format(results));
-  console.log(testinoTester.Testino.testRunnerResultsFromatter.format(results));
-}
-
 // if this file is being run directly, just
 // run the tests
 if (require.main === module) {
-  main();
+  var results = module.exports.run(testino.objectResultsFormatter);
+
+  console.log(results);
+  console.log('\n\n');
+  console.log(testino.jsonStringResultsFormatter.format(results));
+  console.log('\n\n');
+  console.log(testino.defaultResultsFormatter.format(results));
 }
