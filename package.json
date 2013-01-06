@@ -15,6 +15,7 @@
     "url": "https://github.com/tchype/testino.git"
   },
   "dependencies": {
-    "glob": ">=3.1.1"
+    "glob": ">=3.1.1",
+    "argparse": ">=0.1.1"
   }
 }
