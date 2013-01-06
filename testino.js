@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var Testino = { };
 
 // Build up the object through helper methods
@@ -253,3 +255,39 @@ Testino.createFixture = function(fixtureName) {
 
 
 module.exports = Testino;
+
+
+var runningModule = function() { return require.main === module; }
+
+if (!runningModule()) { return; }
+
+var ArgumentParser = require('argparse').ArgumentParser;
+var parser = new ArgumentParser(
+  {
+    addHelp: true,
+    description: "Testino (small test) module"
+  }
+);
+parser.addArgument(
+  ['-j', '--json'],
+  {
+    help: 'output the results as JSON',
+    action: 'storeTrue',
+    defaultValue: false,
+    dest: 'json'
+  }
+);
+
+parser.addArgument(
+  ['-f', '--files'],
+  {
+    help: 'file(s) path/pattern (in glob format) to run',
+    dest: 'files',
+    required: true
+  }
+);
+
+
+args = parser.parseArgs();
+
+console.log(Testino.runFiles(args.files, args.json ? Testino.jsonStringResultsFormatter : null));

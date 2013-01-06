@@ -1,9 +1,12 @@
 {
   "name": "testino",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Tony Heupel (tchype) <tony@heupel.net>",
   "contributors": [],
   "main": "testino.js",
+  "bin": {
+    "testino": "./testino.js"
+  },
   "scripts": {
     "test": "node ./test/testino_test.js"
   },
