@@ -1,8 +1,0 @@
-TESTINO
-(as in "small test" for node)
-
-A small test runner for a simple, small test framework.  Because, hey,
-everyone writes a test framework in node, right?
-
-Really, I just wanted to see what I could do in a day or so.  I may actually
-use it in my next toy project and see what needs to be added.
