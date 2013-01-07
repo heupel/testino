@@ -15,7 +15,7 @@ Approach
 Keep things small and simple (the main testino module is around 300 lines of code), supporting the assert module.
 Other than that, a few simple things:
 
-1. Each test fixture is created using **testino.createFixture** and then adding a mtests member to that object
+1. Each test fixture is created using **testino.createFixture** and then adding a tests member to that object
 2. You simply add a **tests** object as a member of the fixture, and each function is considered a test case
 3. Each test module should export the test fixture as it's **module.exports** and optionally consider adding a code snippet to run the tests if the file is run directly
 
