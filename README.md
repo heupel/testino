@@ -115,4 +115,4 @@ $ testino --files=**/*-test.js --json
 
 
 ```
-&copy; 2013 Tony Heupel
+
